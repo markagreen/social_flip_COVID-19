@@ -1,3 +1,5 @@
+# Scripts
+
 The folder contains the following R scripts:
 
 * vaccine_reinfection_survival.R - file cleans all data and runs the main Cox regression models included in the main paper
