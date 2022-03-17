@@ -3,122 +3,60 @@
 #### Descriptives Tables #####
 ##############################
 
-# Table 1 #
+# libaries
+library(table1)
 
-# Sample size
-nrow(data2[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate),]) # All residents
-nrow(data2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate),]) 
-nrow(data2[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate),]) 
+### Simple way using Rmarkdown (copy and paste into spreadsheet) ###
 
-nrow(data2[data2$n_tests_delta1 == 1 & (data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)),]) # Negative test
-nrow(data2[data2$n_tests_delta2 == 1 & (data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)),]) 
-nrow(data2[data2$n_tests_omni == 1 & (data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)),]) 
+# Table 1
 
-nrow(data2[data2$flu_vax_delta1 == 1 & (data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)),]) # Flu vaccine
-nrow(data2[data2$flu_vax_delta2 == 1 & (data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)),]) 
-nrow(data2[data2$flu_vax_omni == 1 & (data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)),]) 
+# Negative test (all residents are included here)
+table1(~ factor(outcome_delta1) + factor(vax_delta1) + factor(prev_inf_delta1) + Patient.Age + factor(Sex) + factor(EthnicMainGroup) + imd_score + factor(health_issue) | n_tests_delta1, data=data2[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate),]) # Delta (3rd June to 1st September period)
+table1(~ factor(outcome_delta2) + factor(vax_delta2) + factor(prev_inf_delta2) + Patient.Age + factor(Sex) + factor(EthnicMainGroup) + imd_score + factor(health_issue) | n_tests_delta2, data=data2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate),]) # Delta (1st September to 27th November period)
+table1(~ factor(outcome_omni) + factor(vax_omni) + factor(prev_inf_omni) + Patient.Age + factor(Sex) + factor(EthnicMainGroup) + imd_score + factor(health_issue) | n_tests_omni, data=data2[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate),]) # Omicron (13th December to 28th Feb period)
 
-# Outcome variables
-table(data2$outcome_delta1[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], exclude = NULL) # All residents
-table(data2$outcome_delta2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], exclude = NULL) 
-table(data2$outcome_omni[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], exclude = NULL) 
+# Flu vaccination (all residents are included here)
+table1(~ factor(outcome_delta1) + factor(vax_delta1) + factor(prev_inf_delta1) + Patient.Age + factor(Sex) + factor(EthnicMainGroup) + imd_score + factor(health_issue) | flu_vax_delta1, data=data2[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate),]) # Delta (3rd June to 1st September period)
+table1(~ factor(outcome_delta2) + factor(vax_delta2) + factor(prev_inf_delta2) + Patient.Age + factor(Sex) + factor(EthnicMainGroup) + imd_score + factor(health_issue) | flu_vax_delta2, data=data2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate),]) # Delta (1st September to 27th November period)
+table1(~ factor(outcome_omni) + factor(vax_omni) + factor(prev_inf_omni) + Patient.Age + factor(Sex) + factor(EthnicMainGroup) + imd_score + factor(health_issue) | flu_vax_omni, data=data2[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate),]) # Omicron (13th December to 28th Feb period)
 
-table(data2$outcome_delta1[data2$n_tests_delta1 == 1 & (data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)),], exclude = NULL) # Negative test
-table(data2$outcome_delta2[[data2$n_tests_delta2 == 1 & (data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)),], exclude = NULL) 
-table(data2$outcome_omni[data2$n_tests_omni == 1 & (data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)),], exclude = NULL) 
-
-# Vaccination status
-table(data2$vax_delta1[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], exclude = NULL) # All residents
-table(data2$vax_delta2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], exclude = NULL)
-table(data2$vax_omni[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], exclude = NULL)
-
-# Previous Infection
-table(data2$prev_inf_delta1[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], exclude = NULL) # All residents
-table(data2$prev_inf_delta2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], exclude = NULL)
-table(data2$prev_inf_omni[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], exclude = NULL)
-
-# Age
-mean(data2$Patient.Age[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], na.rm = TRUE) # Mean 
-sd(data2$Patient.Age[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)]) # Standard deviation
-nrow(data2[is.na(data2$Patient.Age) & (data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate))]) # Missing data
-
-mean(data2$Patient.Age[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], na.rm = TRUE) # Mean 
-sd(data2$Patient.Age[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)]) # Standard deviation
-nrow(data2[is.na(data2$Patient.Age) & (data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate))]) # Missing data
-
-mean(data2$Patient.Age[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], na.rm = TRUE) # Mean 
-sd(data2$Patient.Age[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)]) # Standard deviation
-nrow(data2[is.na(data2$Patient.Age) & (data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate))]) # Missing data
-
-# Sex
-table(data2$Sex[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], exclude = NULL) # Frequency count
-table(data2$Sex[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], exclude = NULL) 
-table(data2$Sex[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], exclude = NULL) 
-
-# Ethnicity
-table(data2$EthnicMainGroup[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], exclude = NULL) # Frequency count
-table(data2$EthnicMainGroup[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], exclude = NULL) 
-table(data2$EthnicMainGroup[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], exclude = NULL) 
-
-# Deprivation
-# med_vax <- data2[,list(age = median(Patient.Age, na.rm=TRUE), imd = median(imd_score, na.rm=T)), by = "vax_v1"] # If want to stratify
-mean(data2$imd_score[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], na.rm = TRUE) # Mean 
-sd(data2$imd_score[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], na.rm = TRUE) # Standard deviation
-nrow(data2[is.na(data2$imd_score) & (data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate))]) # Missing data
-
-mean(data2$imd_score[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], na.rm = TRUE) # Mean 
-sd(data2$imd_score[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], na.rm = TRUE) # Standard deviation
-nrow(data2[is.na(data2$imd_score) & (data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate))]) # Missing data
-
-mean(data2$imd_score[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], na.rm = TRUE) # Mean 
-sd(data2$imd_score[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], na.rm = TRUE) # Standard deviation
-nrow(data2[is.na(data2$imd_score) & (data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate))]) # Missing data
-
-# Health status
-table(data2$health_issue[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], exclude = NULL) # Frequency count
-table(data2$health_issue[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], exclude = NULL) 
-table(data2$health_issue[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], exclude = NULL) 
-
-# Tests - baseline
-table(data2$n_tests_delta1[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], exclude = NULL) # Frequency count
-table(data2$n_tests_delta2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], exclude = NULL) 
-table(data2$n_tests_omni[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], exclude = NULL) 
-
-# Tests - post baseline
-table(data2$n_tests_post_delta1[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], exclude = NULL) # Frequency count
-table(data2$n_tests_post_delta2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], exclude = NULL) 
-table(data2$n_tests_post_omni[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], exclude = NULL) 
-
-# Summary stats for negative tests per group
-data2[, list(n_tests_post_delta1 = sum(n_tests_post_delta1, na.rm = T), pop = .N), by = c("vax_delta1")] # Vaccination status
-data2[, list(n_tests_post_delta2 = sum(n_tests_post_delta2, na.rm = T), pop = .N), by = c("vax_delta2")] 
-data2[, list(n_tests_post_omni = sum(n_tests_post_omni, na.rm = T), pop = .N), by = c("vax_omni")] 
-
-data2[, list(n_tests_post_delta1 = sum(n_tests_post_delta1, na.rm = T), pop = .N), by = c("prev_inf_delta1")] # Previous infection
-data2[, list(n_tests_post_delta2 = sum(n_tests_post_delta2, na.rm = T), pop = .N), by = c("prev_inf_delta2")] 
-data2[, list(n_tests_post_omni = sum(n_tests_post_omni, na.rm = T), pop = .N), by = c("prev_inf_omni")] 
-
-data2[, list(n_tests_post_delta1 = sum(n_tests_post_delta1, na.rm = T), pop = .N), by = c("imd_decile")] # IMD
-data2[, list(n_tests_post_delta2 = sum(n_tests_post_delta2, na.rm = T), pop = .N), by = c("imd_decile")] 
-data2[, list(n_tests_post_omni = sum(n_tests_post_omni, na.rm = T), pop = .N), by = c("imd_decile")] 
-
-data2[, list(n_tests_post_delta1 = sum(n_tests_post_delta1, na.rm = T), pop = .N), by = c("outcome_delta1")] # Positive test
-data2[, list(n_tests_post_delta2 = sum(n_tests_post_delta2, na.rm = T), pop = .N), by = c("outcome_delta2")] 
-data2[, list(n_tests_post_omni = sum(n_tests_post_omni, na.rm = T), pop = .N), by = c("outcome_omni")]
 
 # Table 1a #
 
-# Vaccination status
-table(data2$vax_delta1[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], data2$outcome_delta1[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], exclude = NULL)
-table(data2$vax_delta2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], data2$outcome_delta2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], exclude = NULL)
-table(data2$vax_omni[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], data2$outcome_omni[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], exclude = NULL)
+# Delta 1 #
 
-# Previous infection
-table(data2$prev_inf_delta1[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], data2$outcome_delta1[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], exclude = NULL)
-table(data2$prev_inf_delta2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], data2$outcome_delta2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], exclude = NULL)
-table(data2$prev_inf_omni[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], data2$outcome_omni[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], exclude = NULL)
+# Negative test (will give all residents)
+table1(~ factor(outcome_delta1) | n_tests_delta1*vax_delta1, data=data2[(data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_delta1) | n_tests_delta1*prev_inf_delta1, data=data2[(data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_delta1) | n_tests_delta1*imd_decile, data=data2[(data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate))]) 
 
-# IMD decile
-table(data2$imd_decile[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], data2$outcome_delta1[data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate)], exclude = NULL)
-table(data2$imd_decile[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], data2$outcome_delta2[data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate)], exclude = NULL)
-table(data2$imd_decile[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], data2$outcome_omni[data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate)], exclude = NULL)
+# Flu vax (will give all residents)
+table1(~ factor(outcome_delta1) | flu_vax_delta1*vax_delta1, data=data2[(data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_delta1) | flu_vax_delta1*prev_inf_delta1, data=data2[(data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_delta1) | flu_vax_delta1*imd_decile, data=data2[(data2$DeathDate >= "2021-09-01" | is.na(data2$DeathDate))]) 
+
+# Delta 2 #
+
+# Negative test (will give all residents)
+table1(~ factor(outcome_delta2) | n_tests_delta2*vax_delta2, data=data2[(data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_delta2) | n_tests_delta2*prev_inf_delta2, data=data2[(data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_delta2) | n_tests_delta2*imd_decile, data=data2[(data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate))]) 
+
+# Flu vax (will give all residents)
+table1(~ factor(outcome_delta2) | flu_vax_delta2*vax_delta2, data=data2[(data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_delta2) | flu_vax_delta2*prev_inf_delta2, data=data2[(data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_delta2) | flu_vax_delta2*imd_decile, data=data2[(data2$DeathDate >= "2021-11-27" | is.na(data2$DeathDate))]) 
+
+# Omicron #
+
+# Negative test (will give all residents)
+table1(~ factor(outcome_omni) | n_tests_omni*vax_omni, data=data2[(data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_omni) | n_tests_omni*prev_inf_omni, data=data2[(data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_omni) | n_tests_omni*imd_decile, data=data2[(data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate))]) 
+
+# Flu vax (will give all residents)
+table1(~ factor(outcome_omni) | flu_vax_omni*vax_omni, data=data2[(data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_omni) | flu_vax_omni*prev_inf_omni, data=data2[(data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate))]) 
+table1(~ factor(outcome_omni) | flu_vax_omni*imd_decile, data=data2[(data2$DeathDate >= "2022-03-01" | is.na(data2$DeathDate))]) 
+
+
