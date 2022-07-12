@@ -26,9 +26,11 @@ library(broom)
 # load("/Volumes/Sharing Folder/2022-03-02/VaccineAnalysisDatasets_Data4a.RData") 
 # load("/Volumes/Sharing Folder/2022-03-02/VaccineAnalysisDatasets_Data4b.RData") 
 load("Q:/2022-03-02/VaccineAnalysisDatasets.RData") # Windows
+rm(data3) # As data has issues (PHE/UKHSA feed stopped updating on 2nd Feb)
+load("Q:/2022-04-04/data3.RData") # Corrected version of this data
 load("Q:/2022-03-02/VaccineAnalysisDatasets_Data4a.RData")
 load("Q:/2022-03-02/VaccineAnalysisDatasets_Data4b.RData")
-data4 <- rbind(data4a, data4b) # Combined parts 1 and 2 of data4 (PHE positives)
+data4 <- rbind(data4a, data4b) # Combine parts 1 and 2 of data4 (negative tests)
 rm(cohort1, data4a, data4b)
 gc()
 
@@ -251,9 +253,9 @@ data2$vax_type_omni[data2$vax_omni == 3 & data2$vax_type_omni != 6 & data2$vax_t
 data2$vax_type_omni[data2$vax_omni == 1 & is.na(data2$vax1_mRNA)] <- NA # Seen some data errors that need fixing
 data2$vax_type_omni <- factor(data2$vax_type_omni) # Store as factor
 
-# Received flu vax 1 year before start of period 
+# Received flu vax before 1st September 2020
 data2$flu_vax_omni <- 0 # Create blank variable
-data2$flu_vax_omni[(data2$flu1_date > "2020-12-13 00:00:00.0000000" & data2$flu1_date < "2021-12-13 00:00:00.0000000") | (data2$flu2_date > "2020-12-13 00:00:00.0000000" & data2$flu2_date < "2021-12-13 00:00:00.0000000") | (data2$flu3_date > "2020-12-13 00:00:00.0000000" & data2$flu3_date < "2021-12-13 00:00:00.0000000") | (data2$flu4_date > "2020-12-13 00:00:00.0000000" & data2$flu4_date < "2021-12-13 00:00:00.0000000")] <- 1
+data2$flu_vax_omni[(data2$flu1_date > "2020-09-01 00:00:00.0000000" & data2$flu1_date < "2021-12-13 00:00:00.0000000") | (data2$flu2_date > "2020-09-01 00:00:00.0000000" & data2$flu2_date < "2021-12-13 00:00:00.0000000") | (data2$flu3_date > "2020-09-01 00:00:00.0000000" & data2$flu3_date < "2021-12-13 00:00:00.0000000") | (data2$flu4_date > "2020-09-01 00:00:00.0000000" & data2$flu4_date < "2021-12-13 00:00:00.0000000")] <- 1
 
 # 2c. Previous infection #
 
@@ -636,14 +638,12 @@ load("./Data/cleaned_data.RData")
 
 ## 3. Descriptive tables and plots ##
 
-# Generate descriptive tables
-# options(scipen=999) # To stop reporting numbers by e+10 etc
-source(vaccine_reinfection_descriptives.R) # Run code
+# Generate descriptive tables and plots
+options(scipen=999) # To stop reporting numbers by e+10 etc
+source(vaccine_reinfection_descriptives.R) # Descriptive statistics
+source(vaccine_reinfection_plots.R) # Plots
 
-# To get plots 
-# source(vaccine_reinfection_plots.R) # Run separately as loads in data again
-
-## 4. Survival analysis - vaccination status ##
+## 4. Survival analysis ##
 
 # a. Only people who test #
 
@@ -867,6 +867,52 @@ table <- rbind(table, test)
 
 write.csv(table, "./Vaccine v reinfection paper/coxph_flu_vax_omni.csv") # Save
 rm(table)
+
+
+# c. Check for the proportional hazards assumption #
+
+# Do only for fully adjusted models
+sch_1 <- cox.zph(model1_i_a1) # Estimate Schoenfeld residuals
+table <- data.frame(sch_1$table) # Store results
+table$model <- "Neg test - Delta 1" # Add model description
+sch_2 <- cox.zph(model1_ii_b1) # Repeat process for each model
+hold <- data.frame(sch_2$table)
+hold$model <- "Neg test - Delta 2" 
+table <- rbind(table, hold) 
+sch_3 <- cox.zph(model1_iii_b1)
+hold <- data.frame(sch_3$table)
+hold$model <- "Neg test - Omicron" 
+table <- rbind(table, hold)
+sch_4 <- cox.zph(model2_i_a1)
+hold <- data.frame(sch_4$table)
+hold$model <- "Flu vax - Delta 1" 
+table <- rbind(table, hold)
+sch_5 <- cox.zph(model2_ii_b1)
+hold <- data.frame(sch_5$table)
+hold$model <- "Flu vax - Delta 2" 
+table <- rbind(table, hold) 
+sch_6 <- cox.zph(model2_iii_b1)
+hold <- data.frame(sch_6$table)
+hold$model <- "Flu vax - Omicron" 
+table <- rbind(table, hold) 
+
+# To check residuals visually using a plot
+plot(sch_1)
+plot(sch_2)
+plot(sch_3)
+plot(sch_4)
+plot(sch_5)
+plot(sch_6)
+
+# Save
+write.csv(table, "./Vaccine v reinfection paper/schoenfeld_residuals.csv") # Save
+rm(table, hold)
+
+# To run flexible semiparametric approaches
+
+# library(flexsurv)
+# flex_1 <- coxph(Surv(tstart, tstop, infection) ~ vax_delta1 + prev_inf_delta1 + vax_delta1:tstart + prev_inf_delta1:tstart + factor(age_band) + factor(Sex) + factor(EthnicMainGroup) + imd_score + factor(health_issue)  + cluster(FK_Patient_Link_ID), data = survival_delta1[survival_delta1$n_tests_delta1 == 1 & (survival_delta1$DeathDate >= "2021-09-01" | is.na(survival_delta1$DeathDate)),], dist = "exp") # Expoential density
+# flex_2 <- coxph(Surv(tstart, tstop, infection) ~ vax_delta1 + prev_inf_delta1 + vax_delta1:tstart + prev_inf_delta1:tstart + factor(age_band) + factor(Sex) + factor(EthnicMainGroup) + imd_score + factor(health_issue)  + cluster(FK_Patient_Link_ID), data = survival_delta1[survival_delta1$n_tests_delta1 == 1 & (survival_delta1$DeathDate >= "2021-09-01" | is.na(survival_delta1$DeathDate)),], dist = "weibull") # Accelerated time failure
 
 
 # 4. Sensitivity analyses #
