@@ -16,89 +16,20 @@ library(dplyr)
 library(plyr)
 library(ggplot2) # For visualisations
 library(viridis)
+library(patchwork)
 library(zoo) # For rolling average
 
 
 ### 1. Tidy data ###
 
 #  Load data
-load("/Volumes/Sharing Folder/2022-03-02/VaccineAnalysisDatasets.RData") # Mac
-#load("Q:/2022-03-02/VaccineAnalysisDatasets.RData") # Windows
-rm(cohort1)
-
-# 1a. Vaccination data #
-
-# Subset only COVID-19 vaccines (flu jabs are in here for example) and people who completed the vaccine
-data1 <- data.table(data1) # Convert data type
-data1 <- data1[data1$Status == "completed" & (data1$VaccinationProcedure == "1324681000000101" | data1$VaccinationProcedure == "1324691000000104" | data1$VaccinationProcedure == "1362591000000103")] # Subset
-# Vaccine SNOMED codes are in "VaccinationProcedure". 1st dose=1324681000000101, 2nd dose=1324691000000104, Booster=1362591000000103. Completed = people who attended and were received their vaccine (not all receive them after attending)
-
-# Tidy vaccination data and link to main dataset
-data1$t_date <- ymd_hms(data1$DateTimeAdministered) # Convert to time-date
-data1 <- unique(data1, by = c("FK_Patient_Link_ID", "t_date")) # Remove repeated vaccines (just over 60k cases are repeated, so remove one of each)
-data1[order(FK_Patient_Link_ID, t_date), num_vax:=1:.N, by=.(FK_Patient_Link_ID)] # Count number of vaccine doses
-vax <- data1[num_vax <= 3] # Store upto three vaccine doses only
-vaccinated <- dcast(vax, FK_Patient_Link_ID ~ num_vax, value.var = c("t_date", "Manufacturer")) # Reshape to wide format to list when got each vaccine
-names(vaccinated) <- c("FK_Patient_Link_ID", "vax1_date", "vax2_date", "vax3_date", "vax1_type", "vax2_type", "vax3_type") # Rename variables to help R
-data2 <- merge(data2, vaccinated, by = "FK_Patient_Link_ID", all.x = TRUE) # Join onto main dataset
-rm(data1, vax, vaccinated) # Save space
-
-# Recode vax type into mRNA or not
-data2$vax1_mRNA <- NA
-data2$vax1_mRNA[data2$vax1_type == "AstraZeneca" | data2$vax1_type == "AstraZeneca UK Ltd" | data2$vax1_type == "Janssen-Cilag" | data2$vax1_type == "Johnson & Johnson" | data2$vax1_type == "Oxford Astra Zeneca"] <- 0
-data2$vax1_mRNA[data2$vax1_type == "Moderna" | data2$vax1_type == "Moderna, Inc" | data2$vax1_type == "Pfizer" | data2$vax1_type == "Pfizer-BioNTech" | data2$vax1_type == "Pfizer Ltd" | data2$vax1_type == "Pfizer/BioNTech" | data2$vax1_type == "Pfizer-BioNTech COVID-19 mRNA Vaccine BNT162b2" | data2$vax1_type == "Baxter Oncology GmbH"] <- 1
-
-data2$vax2_mRNA <- NA
-data2$vax2_mRNA[data2$vax2_type == "AstraZeneca" | data2$vax2_type == "AstraZeneca UK Ltd" | data2$vax2_type == "Janssen-Cilag" | data2$vax2_type == "Johnson & Johnson" | data2$vax2_type == "Oxford Astra Zeneca"] <- 0
-data2$vax2_mRNA[data2$vax2_type == "Moderna" | data2$vax2_type == "Moderna, Inc" | data2$vax2_type == "Pfizer" | data2$vax2_type == "Pfizer-BioNTech" | data2$vax2_type == "Pfizer Ltd" | data2$vax2_type == "Pfizer/BioNTech" | data2$vax2_type == "Pfizer-BioNTech COVID-19 mRNA Vaccine BNT162b2" | data2$vax2_type == "Baxter Oncology GmbH"] <- 1
-
-data2$vax3_mRNA <- NA
-data2$vax3_mRNA[data2$vax3_type == "AstraZeneca" | data2$vax3_type == "AstraZeneca UK Ltd" | data2$vax3_type == "Janssen-Cilag" | data2$vax3_type == "Johnson & Johnson" | data2$vax3_type == "Oxford Astra Zeneca"] <- 0
-data2$vax3_mRNA[data2$vax3_type == "Moderna" | data2$vax3_type == "Moderna, Inc" | data2$vax3_type == "Pfizer" | data2$vax3_type == "Pfizer-BioNTech" | data2$vax3_type == "Pfizer Ltd" | data2$vax3_type == "Pfizer/BioNTech" | data2$vax3_type == "Pfizer-BioNTech COVID-19 mRNA Vaccine BNT162b2" | data2$vax3_type == "Baxter Oncology GmbH"] <- 1
+# load("./Data/cleaned_data.RData") 
 
 
-# 1b. Test and Trace data #
-
-# Tidy data
-data3 <- data.table(data3) # Convert format
-data3$t_date <- ymd_hms(data3$SpecimenDate) # Convert to time-date
-data3$day <- as_date(data3$t_date) # Define day
-data3 <- data3[order(FK_Patient_Link_ID, day), num_inf:=1:.N, by=.(FK_Patient_Link_ID)] # Count number of positive tests
-data3 <- data3[order(FK_Patient_Link_ID, day), tdiff := difftime(day, shift(day, fill=day[1L]), units="days"), by=FK_Patient_Link_ID] # Calculate time inbetween positive tests
-
-# Define first infection
-data3$first_inf <- 0
-data3$first_inf[data3$num_inf == 1] <- 1 # num_inf = 1 - always gives this tdiff = 0 so is first infection
-
-# Define reinfection(s)
-data3$reinf <- 0 
-data3$reinf[data3$num_inf > 1 & data3$tdiff > 90] <- 1 # If num_inf > 1 and tdiff is 90+ apart, then define as reinfection 
-
-# Calculate number of infections per person
-hold <- data3[data3$first_inf == 1 | data3$reinf == 1] # Select only first infection or any reinfections only
-hold <- hold[order(FK_Patient_Link_ID, day), num_inf:=1:.N, by=.(FK_Patient_Link_ID)] # Count actual number of infections
-infections <- dcast(hold, FK_Patient_Link_ID ~ num_inf, value.var = "day") # Reshape to wide
-names(infections) <- c("FK_Patient_Link_ID", "inf1_date", "inf2_date", "inf3_date", "inf4_date") # Rename variables to help R
-data2 <- merge(data2, infections, by = "FK_Patient_Link_ID", all.x = TRUE) # Join onto main dataset
-rm(hold, data3, infections) # Drop objects not required
-
-# 1c. Final tidying #
-
-# Drop data from analyses
-data2 <- data.table(data2) # Convert format
-data2 <- data2[data2$FK_Patient_Link_ID != -1,] # Drop missing person ID (n=21)
-data2 <- data2[!is.na(data2$FK_Patient_Link_ID),] # Drop missing person ID (n=2)
+### 2. Plots ####
 
 
-# Load and join on IMD decile
-imd <- fread("/Volumes/MAST/SMART_LCR_report/Data/imd2019.csv") # Mac
-#imd <- fread("R:/SMART_LCR_report/Data/imd2019.csv") # Windows
-data2 <- merge(data2, imd, by.x = "LSOA_Code", by.y = "lsoa11", all.x = TRUE) # join together
-rm(imd)
-
-
-
-# 1d. Quick and dirty descriptive plot #
+# Figure 1 #
 
 # Generate data for plotting
 new_inf <- data2[, list(New = .N), by = "inf1_date"] # Aggregate counts of infections for new infection
@@ -127,21 +58,27 @@ trend_data$New_7day <- rollmean(trend_data$New, k = 7, fill = NA) # 7 day averag
 trend_data$Reinfection_7day <- rollmean(trend_data$Reinfection, k = 7, fill = NA)
 trend_data_long <- gather(data = trend_data, key = Infection, value = freq, New_7day:Reinfection_7day) # Convert to long format as easier for plotting
 
+# Define plot labels for study period 
+text_plot <- data.frame(text = c("Delta 1", "Delta 2", "Omicron"), start_date = as.Date(c("2021-06-03", "2021-09-01", "2021-12-13")), end_date = as.Date(c("2021-08-31", "2021-11-26", "2022-02-28")), ymin = c(0, 0, 0), ymax = c(max(trend_data_long$freq, na.rm=T), max(trend_data_long$freq, na.rm=T), max(trend_data_long$freq, na.rm=T)), stringsAsFactors = FALSE)
+
 # Plot
 plot1 <- ggplot() +
-  geom_line(data = trend_data_long, aes(x = day, y = freq, group = Infection, color = Infection)) +
-  geom_point(data = trend_data_long[trend_data_long$Infection == "New_7day",], aes(x = day, y = New, group = Infection, color = Infection), alpha = 0.1) +
-  geom_point(data = trend_data_long[trend_data_long$Infection == "Reinfection_7day",], aes(x = day, y = Reinfection, group = Infection, color = Infection), alpha = 0.1) +
+  geom_rect(data = text_plot, mapping = aes(xmin = start_date, xmax = end_date, ymin = ymin, ymax = ymax), color = "grey", alpha = 0.1) + # Add box for period
+  geom_text(mapping = aes(x = start_date, y = 500+ymax, label = text, hjust = 0), size = 3.4, data = text_plot) + # Add in text labels for period (I have added some extra distance to the y value so it is spaced out vs the rectangles above)
+  geom_line(data = trend_data_long[trend_data_long$day < "2022-03-01",], aes(x = day, y = freq, group = Infection, color = Infection)) +
+  # geom_point(data = trend_data_long[trend_data_long$Infection == "New_7day",], aes(x = day, y = New, group = Infection, color = Infection), alpha = 0.1) +
+  # geom_point(data = trend_data_long[trend_data_long$Infection == "Reinfection_7day",], aes(x = day, y = Reinfection, group = Infection, color = Infection), alpha = 0.1) +
   xlab("Date") +
-  ylab("Number of registered positive tests") +
+  ylab("Frequency") +
   scale_color_viridis_d(option = "turbo", begin = 0.1, end = 0.9, labels = c("First positive", "Further positives")) +
-  labs(title = "Number of COVID-19 registered positive tests",
-       subtitle = "The line represents the 7-day moving average, with points the daily value.") +
+  #labs(title = "Number of COVID-19 registered positive tests",
+  #     subtitle = "The line represents the 7-day moving average, with points the daily value.") +
   theme(text = element_text(size = 16), plot.title = element_text(size = 20, face = "bold"),)  +
-  scale_x_date(breaks = "4 months", minor_breaks = "1 month", date_labels = "%b %Y")
+  scale_x_date(breaks = "3 months", minor_breaks = "1 month", date_labels = "%b %y") +
+  ylim(0, 500+max(trend_data_long$freq, na.rm=T))
 plot1
-ggsave(plot = plot1, filename = "./Vaccine v reinfection paper/reinfection_trends.jpeg") # Save
-ggsave(plot = plot1, filename = "./Vaccine v reinfection paper/reinfection_trends.svg") 
+# ggsave(plot = plot1, filename = "./Vaccine v reinfection paper/reinfection_trends.jpeg") # Save
+# ggsave(plot = plot1, filename = "./Vaccine v reinfection paper/reinfection_trends.svg") 
 
 # Calculate percentage of reinfections for a specific period
 (sum(trend_data$Reinfection[trend_data$day >= "2021-12-13"]) / (sum(trend_data$Reinfection[trend_data$day >= "2021-12-13"]) + sum(trend_data$New[trend_data$day >= "2021-12-13"]))) * 100
@@ -166,19 +103,37 @@ trend_data$new_rate <- (trend_data$New_7day / trend_data$pop_new) * 100000 # Cal
 trend_data$reinf_rate <- (trend_data$Reinfection_7day / trend_data$pop_reinf) * 100000
 trend_data_long <- gather(data = trend_data, key = Infection, value = rate, new_rate:reinf_rate) # Convert to long format as easier for plotting
 
+# Define plot labels for study period 
+text_plot2 <- data.frame(text = c("Delta 1", "Delta 2", "Omicron"), start_date = as.Date(c("2021-06-03", "2021-09-01", "2021-12-13")), end_date = as.Date(c("2021-08-31", "2021-11-26", "2022-02-28")), ymin = c(0, 0, 0), ymax = c(max(trend_data_long$rate, na.rm=T), max(trend_data_long$rate, na.rm=T), max(trend_data_long$rate, na.rm=T)), stringsAsFactors = FALSE)
+
 # Plot
 plot2 <- ggplot() +
-  geom_line(data = trend_data_long, aes(x = day, y = rate, group = Infection, color = Infection)) +
+  geom_rect(data = text_plot2, mapping = aes(xmin = start_date, xmax = end_date, ymin = ymin, ymax = ymax), color = "grey", alpha = 0.1) + # Add box for period
+  geom_text(mapping = aes(x = start_date, y = 20+ymax, label = text, hjust = 0), size = 3.4, data = text_plot2) + # Add in text labels for period
+  geom_line(data = trend_data_long[trend_data_long$day < "2022-03-01",], aes(x = day, y = rate, group = Infection, color = Infection)) +
   xlab("Date") +
-  ylab("Number of registered positive tests per 100,000") +
+  ylab("Rate per 100,000") +
   scale_color_viridis_d(option = "turbo", begin = 0.1, end = 0.9, labels = c("First positive", "Further positives")) +
-  labs(title = "Number of COVID-19 registered positive tests per capita",
-       subtitle = "The line represents the 7-day moving average.") +
-  theme(text = element_text(size = 16), plot.title = element_text(size = 20, face = "bold"),)  +
-  scale_x_date(breaks = "4 months", minor_breaks = "1 month", date_labels = "%b %Y")
+  #labs(title = "Number of COVID-19 registered positive tests per capita",
+  #     subtitle = "The line represents the 7-day moving average.") +
+  theme(text = element_text(size = 16), plot.title = element_text(size = 20, face = "bold"))  +
+  scale_x_date(breaks = "3 months", minor_breaks = "1 month", date_labels = "%b %y") +
+  ylim(0, 20+max(trend_data_long$rate, na.rm=T))
 plot2
-ggsave(plot = plot2, filename = "./Vaccine v reinfection paper/reinfection_trends_rate.jpeg") # Save
-ggsave(plot = plot2, filename = "./Vaccine v reinfection paper/reinfection_trends_rate.svg") 
+# ggsave(plot = plot2, filename = "./Vaccine v reinfection paper/reinfection_trends_rate.jpeg") # Save
+# ggsave(plot = plot2, filename = "./Vaccine v reinfection paper/reinfection_trends_rate.svg") 
+# hjust = -0.05, vjust = -0.5
+
+# Combine plot
+fig1 <- plot1 / 
+  plot2 +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(guides = "collect") 
+fig1
+ggsave(plot = fig1, filename = "./Vaccine v reinfection paper/figure1.jpeg") # Save
+ggsave(plot = fig1, filename = "./Vaccine v reinfection paper/figure1_hires.tiff", dpi = 300)
+ggsave(plot = fig1, filename = "./Vaccine v reinfection paper/figure1.svg")
+
 
 # Redo by deprivation #
 
@@ -246,7 +201,7 @@ labels <- c("First positive", "Further positives")
 names(labels) <- c("new_rate", "reinf_rate")
 
 # Plot
-ses_plot1 <- ggplot(data = trend_data2_long[(trend_data2_long$imd_decile == 1 | trend_data2_long$imd_decile == 10),], aes(x = day, y = rate, group = factor(imd_decile), color = factor(imd_decile))) +
+ses_plot1 <- ggplot(data = trend_data2_long[(trend_data2_long$imd_decile == 1 | trend_data2_long$imd_decile == 10) & trend_data2_long$day < "2022-03-01",], aes(x = day, y = rate, group = factor(imd_decile), color = factor(imd_decile))) +
   geom_line() +
   facet_wrap(~Infection, scales = "fixed", labeller = labeller(Infection = labels)) +
   scale_color_viridis_d(option = "turbo", begin = 0.1, end = 0.9, labels = c("1: Most deprived", "10: Least Deprived")) +
@@ -258,36 +213,57 @@ ses_plot1 <- ggplot(data = trend_data2_long[(trend_data2_long$imd_decile == 1 | 
   scale_x_date(breaks = "7 months", minor_breaks = "1 month", date_labels = "%b %Y")
 ses_plot1
 ggsave(plot = ses_plot1, filename = "./Vaccine v reinfection paper/ses_trends_whole.jpeg") # Save
+ggsave(plot = ses_plot1, filename = "./Vaccine v reinfection paper/ses_trends_whole_hires.tiff", dpi = 300) 
 ggsave(plot = ses_plot1, filename = "./Vaccine v reinfection paper/ses_trends_whole.svg") 
 
 # Plot 2: Fix date for period
 
 # Plot
-ses_plot2 <- ggplot(data = trend_data2_long[trend_data2_long$day >= "2021-06-03" & (trend_data2_long$imd_decile == 1 | trend_data2_long$imd_decile == 10),], aes(x = day, y = rate, group = factor(imd_decile), color = factor(imd_decile))) +
-  geom_line() +
+ses_plot2 <- ggplot() +
+  geom_rect(data = text_plot2, mapping = aes(xmin = start_date, xmax = end_date, ymin = ymin, ymax = ymax), color = "grey", alpha = 0.1) + # Add box for period
+  geom_text(mapping = aes(x = start_date, y = 400, label = text, hjust = 0), size = 5, data = text_plot2) + # Add in text labels for period
+  geom_line(data = trend_data2_long[(trend_data2_long$day >= "2021-06-03" & trend_data2_long$day < "2022-03-01") & (trend_data2_long$imd_decile == 1 | trend_data2_long$imd_decile == 10),], aes(x = day, y = rate, group = factor(imd_decile), color = factor(imd_decile)), size = 0.8) +
   facet_wrap(~Infection, scales = "fixed", labeller = labeller(Infection = labels)) +
   scale_color_viridis_d(option = "turbo", begin = 0.1, end = 0.9, labels = c("1: Most deprived", "10: Least Deprived")) +
   labs(color = "Deprivation decile") +
   xlab("Date") +
   ylab("Registered positive tests per 100,000 people") +
-  ylim(0,NA) +
+  ylim(0, 410) +
+  scale_x_date(breaks = "1 month", date_labels = "%b") + # Define labels for x-axis
+  theme(text = element_text(size = 16), plot.title = element_text(size = 20, face = "bold")) + # Make text size bigger
   theme(legend.position="bottom")
 ses_plot2
-ggsave(plot = ses_plot2, filename = "./Vaccine v reinfection paper/ses_trends_study_period.jpeg") # Save
-ggsave(plot = ses_plot2, filename = "./Vaccine v reinfection paper/ses_trends_study_period.svg") 
+ggsave(plot = ses_plot2, filename = "./Vaccine v reinfection paper/figure3.jpeg") # Save
+ggsave(plot = ses_plot2, filename = "./Vaccine v reinfection paper/figure3.tiff", dpi = 300) 
+ggsave(plot = ses_plot2, filename = "./Vaccine v reinfection paper/figure3.svg") 
 
-# Plot 3: percent of reinfections by decile
+# Plot 3: Percent of reinfections by decile
+
+
+# Define plot labels for study period 
+text_plot3 <- data.frame(text = c("Delta 1", "Delta 2", "Omicron"), start_date = as.Date(c("2021-06-03", "2021-09-01", "2021-12-13")), end_date = as.Date(c("2021-08-31", "2021-11-26", "2022-02-28")), ymin = c(0, 0, 0), ymax = c(20, 20, 20), stringsAsFactors = FALSE)
+
+# Define transparency for lines
+trend_data2$alpha <- NA # Create blank variable
+trend_data2$alpha[trend_data2$imd_decile == 1 | trend_data2$imd_decile == 10] <- 1 # Make so stand out
+trend_data2$alpha[trend_data2$imd_decile > 1 & trend_data2$imd_decile < 10] <- 0.8 # Make see through
 
 # Plot
-ses_plot3 <- ggplot(data = trend_data2[trend_data2$day >= "2021-06-03",], aes(x = day, y = pc_reinf, group = factor(imd_decile), color = factor(imd_decile))) + # Plot
-  geom_line() +
-  scale_color_viridis_d(option = "turbo", begin = 0.1, end = 0.9) +
-  labs(color = "Deprivation decile") +
+ses_plot3 <- ggplot() + # Plot
+  geom_rect(data = text_plot3, mapping = aes(xmin = start_date, xmax = end_date, ymin = ymin, ymax = 19), color = "grey", alpha = 0.1) + # Add box for period
+  geom_text(mapping = aes(x = start_date, y = ymax, label = text, hjust = 0), size = 5, data = text_plot3) + # Add in text labels for period
+  geom_line(data = trend_data2[trend_data2$day >= "2021-06-03" & trend_data2$day < "2022-03-01",], aes(x = day, y = pc_reinf, group = factor(imd_decile), color = factor(imd_decile), alpha = alpha), size = 0.8) +
+  scale_color_viridis_d(option = "turbo", begin = 0.1, end = 0.9) + # Make colouur blind friendly
+  labs(color = "Deprivation decile") + # Define labels for plot
   xlab("Date") +
   ylab("Percent of all positive tests that are further positive tests (%)") +
-  ylim(0,NA)
+  ylim(0,20) + # Set limits of y-axis
+  scale_x_date(breaks = "1 month", date_labels = "%b") + # Define labels for x-axis
+  theme(text = element_text(size = 16), plot.title = element_text(size = 20, face = "bold")) + # Make text size bigger
+  scale_alpha_continuous(guide = "none") # Drop alpha legend
 ses_plot3
-ggsave(plot = ses_plot3, filename = "./Vaccine v reinfection paper/ses_percent_reinfections.jpeg") # Save
-ggsave(plot = ses_plot3, filename = "./Vaccine v reinfection paper/ses_percent_reinfections.svg") 
+ggsave(plot = ses_plot3, filename = "./Vaccine v reinfection paper/figure2.jpeg") # Save
+ggsave(plot = ses_plot3, filename = "./Vaccine v reinfection paper/figure2.tiff", dpi = 300)
+ggsave(plot = ses_plot3, filename = "./Vaccine v reinfection paper/figure2.svg") 
 
 
