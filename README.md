@@ -15,3 +15,7 @@ Methods: Population cohort study using electronic health records for 2.7 M resid
 Results: Originally higher SARS-CoV-2 rates in the most socioeconomically deprived neighbourhoods changed to being higher in the least deprived neighbourhoods from the 1st September 2021, and were inconsistent during the Omicron wave. Individuals who were fully vaccinated (two doses) were associated with fewer registered positive tests (e.g., individuals engaged in testing between 1st September and 27th November 2021—Hazards Ratio (HR) = 0.48, 95% Confidence Intervals (CIs) = 0.47–0.50. Individuals with a previous registered positive test were also less likely to have a registered positive test (e.g., individuals engaged in testing between 1st September and 27th November 2021—HR = 0.16, 95% CIs = 0.15–0.18. However, the Omicron period saw smaller effect sizes for both vaccination status and previous registered positive test.
 
 Conclusions: Changing patterns of SARS-CoV-2 infections during the Delta and Omicron waves reveals a dynamic pandemic that continues to affect diverse communities in sometimes unexpected ways.
+
+**Paper citation**
+
+Green, M.A., Hungerford, D.J., Hughes, D.M. et al. Changing patterns of SARS-CoV-2 infection through Delta and Omicron waves by vaccination status, previous infection and neighbourhood deprivation: a cohort analysis of 2.7 M people. BMC Infect Dis 22, 889 (2022). https://doi.org/10.1186/s12879-022-07878-2
